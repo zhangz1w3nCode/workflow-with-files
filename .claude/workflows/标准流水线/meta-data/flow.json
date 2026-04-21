@@ -1,0 +1,122 @@
+{
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "position": {
+        "x": -280,
+        "y": 260
+      },
+      "data": {
+        "label": "开始"
+      }
+    },
+    {
+      "id": "end-1",
+      "type": "end",
+      "position": {
+        "x": 980,
+        "y": 240
+      },
+      "data": {
+        "label": "结束"
+      }
+    },
+    {
+      "id": "business-1776790447735",
+      "type": "business",
+      "position": {
+        "x": 140,
+        "y": 240
+      },
+      "data": {
+        "label": "理解用户需求",
+        "nodeDefId": "node-1776790358350-ywlcy1",
+        "nodeDefName": "理解用户需求",
+        "description": "",
+        "isLocal": false,
+        "nodeRefPath": ".claude/nodes/理解用户需求.md"
+      }
+    },
+    {
+      "id": "business-1776790455900",
+      "type": "business",
+      "position": {
+        "x": 380,
+        "y": 240
+      },
+      "data": {
+        "label": "搜索知识库",
+        "nodeDefId": "node-1776790410349-yqwysg",
+        "nodeDefName": "搜索知识库",
+        "description": "",
+        "isLocal": false,
+        "nodeRefPath": ".claude/nodes/搜索知识库.md"
+      }
+    },
+    {
+      "id": "business-1776790466583",
+      "type": "business",
+      "position": {
+        "x": -120,
+        "y": 240
+      },
+      "data": {
+        "label": "搜索记忆库",
+        "nodeDefId": "node-1776790388866-9ruvsf",
+        "nodeDefName": "搜索记忆库",
+        "description": "",
+        "isLocal": false,
+        "nodeRefPath": ".claude/nodes/搜索记忆库.md"
+      }
+    },
+    {
+      "id": "business-1776790487502",
+      "type": "business",
+      "position": {
+        "x": 660,
+        "y": 240
+      },
+      "data": {
+        "label": "搜索代码库",
+        "nodeDefId": "node-1776790430068-9rzqet",
+        "nodeDefName": "搜索代码库",
+        "description": "",
+        "isLocal": false,
+        "nodeRefPath": ".claude/nodes/搜索代码库.md"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-1776790458933",
+      "source": "business-1776790447735",
+      "target": "business-1776790455900",
+      "type": "default"
+    },
+    {
+      "id": "e-1776790474984",
+      "source": "start-1",
+      "target": "business-1776790466583",
+      "type": "default"
+    },
+    {
+      "id": "e-1776790477819",
+      "source": "business-1776790466583",
+      "target": "business-1776790447735",
+      "type": "default"
+    },
+    {
+      "id": "e-1776790492869",
+      "source": "business-1776790455900",
+      "target": "business-1776790487502",
+      "type": "default"
+    },
+    {
+      "id": "e-1776790495102",
+      "source": "business-1776790487502",
+      "target": "end-1",
+      "type": "default"
+    }
+  ]
+}

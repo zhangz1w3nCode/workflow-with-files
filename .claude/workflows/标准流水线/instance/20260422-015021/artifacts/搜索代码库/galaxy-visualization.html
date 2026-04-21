@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银河系可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            z-index: 10;
+            pointer-events: none;
+        }
+        #ui h1 {
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(100, 180, 255, 0.5);
+        }
+        #ui p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 10px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 13px;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        .btn.active {
+            background: rgba(100, 180, 255, 0.3);
+            border-color: rgba(100, 180, 255, 0.5);
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            text-align: right;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>银河系</h1>
+        <p>拖动旋转 · 滚轮缩放 · 双击重置</p>
+    </div>
+    <div id="info">
+        <span id="star-count"></span> 颗恒星
+    </div>
+    <div id="controls">
+        <button class="btn active" onclick="setView('top')">俯视</button>
+        <button class="btn" onclick="setView('side')">侧视</button>
+        <button class="btn" onclick="setView('perspective')">透视</button>
+        <button class="btn" onclick="toggleRotation()">暂停旋转</button>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.0005);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.set(0, 300, 0);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(0x000000);
+
+        // 创建银河参数
+        const GALAXY_PARAMS = {
+            armCount: 4,
+            starCount: 15000,
+            armSpread: 0.5,
+            coreSize: 30,
+            galaxyRadius: 300,
+            spiralTurns: 2.5
+        };
+
+        // 生成银河恒星
+        function createGalaxy() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+
+            const colorInside = new THREE.Color(0xffaa55);
+            const colorOutside = new THREE.Color(0x5588ff);
+            const colorCore = new THREE.Color(0xffffaa);
+
+            for (let i = 0; i < GALAXY_PARAMS.starCount; i++) {
+                const radius = Math.random() * GALAXY_PARAMS.galaxyRadius;
+                const spinAngle = radius * GALAXY_PARAMS.spiralTurns / GALAXY_PARAMS.galaxyRadius;
+                const branchAngle = (i % GALAXY_PARAMS.armCount) / GALAXY_PARAMS.armCount * Math.PI * 2;
+                const randomAngle = (Math.random() - 0.5) * GALAXY_PARAMS.armSpread;
+
+                const angle = branchAngle + spinAngle + randomAngle;
+
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = (Math.random() - 0.5) * (radius * 0.1 + 5);
+
+                positions.push(x, y, z);
+
+                const mixedColor = colorInside.clone().lerp(colorOutside, radius / GALAXY_PARAMS.galaxyRadius);
+                if (radius < GALAXY_PARAMS.coreSize) {
+                    mixedColor.lerp(colorCore, 1 - radius / GALAXY_PARAMS.coreSize);
+                }
+
+                colors.push(mixedColor.r, mixedColor.g, mixedColor.b);
+                sizes.push(Math.random() * 2 + 0.5);
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.5,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true
+            });
+
+            return new THREE.Points(geometry, material);
+        }
+
+        const galaxy = createGalaxy();
+        scene.add(galaxy);
+
+        // 创建银河核心发光体
+        const coreGeometry = new THREE.SphereGeometry(15, 32, 32);
+        const coreMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffaa,
+            transparent: true,
+            opacity: 0.8
+        });
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        scene.add(core);
+
+        // 核心光晕
+        const glowGeometry = new THREE.SphereGeometry(40, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffaa44,
+            transparent: true,
+            opacity: 0.15
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        scene.add(glow);
+
+        // 添加背景星星
+        function createBackgroundStars() {
+            const bgGeometry = new THREE.BufferGeometry();
+            const bgPositions = [];
+            const bgColors = [];
+
+            for (let i = 0; i < 5000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+
+                if (Math.sqrt(x*x + y*y + z*z) > 400) {
+                    bgPositions.push(x, y, z);
+                    const brightness = 0.3 + Math.random() * 0.7;
+                    const colorType = Math.random();
+                    if (colorType < 0.7) {
+                        bgColors.push(brightness, brightness, brightness);
+                    } else if (colorType < 0.85) {
+                        bgColors.push(brightness, brightness * 0.9, brightness * 0.7);
+                    } else {
+                        bgColors.push(brightness * 0.7, brightness * 0.8, brightness);
+                    }
+                }
+            }
+
+            bgGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
+            bgGeometry.setAttribute('color', new THREE.Float32BufferAttribute(bgColors, 3));
+
+            const bgMaterial = new THREE.PointsMaterial({
+                size: 0.8,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            return new THREE.Points(bgGeometry, bgMaterial);
+        }
+
+        const bgStars = createBackgroundStars();
+        scene.add(bgStars);
+
+        // 交互控制
+        let isRotating = true;
+        let rotationSpeed = 0.001;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let isDragging = false;
+        let previousMouseX = 0, previousMouseY = 0;
+        let cameraDistance = 300;
+        let cameraAngleX = 0;
+        let cameraAngleY = Math.PI / 2;
+
+        function updateCamera() {
+            camera.position.x = cameraDistance * Math.sin(cameraAngleY) * Math.cos(cameraAngleX);
+            camera.position.y = cameraDistance * Math.cos(cameraAngleY);
+            camera.position.z = cameraDistance * Math.sin(cameraAngleY) * Math.sin(cameraAngleX);
+            camera.lookAt(0, 0, 0);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMouseX;
+                const deltaY = e.clientY - previousMouseY;
+                cameraAngleX -= deltaX * 0.005;
+                cameraAngleY = Math.max(0.1, Math.min(Math.PI - 0.1, cameraAngleY + deltaY * 0.005));
+                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
+                updateCamera();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => { isDragging = false; });
+        canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            cameraDistance = Math.max(100, Math.min(800, cameraDistance + e.deltaY * 0.2));
+            updateCamera();
+        });
+
+        canvas.addEventListener('dblclick', () => {
+            setView('top');
+        });
+
+        // 视图控制
+        function setView(view) {
+            document.querySelectorAll('.btn').forEach((btn, idx) => {
+                if (idx < 3) btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            switch(view) {
+                case 'top':
+                    cameraAngleX = 0;
+                    cameraAngleY = Math.PI / 2;
+                    cameraDistance = 300;
+                    break;
+                case 'side':
+                    cameraAngleX = 0;
+                    cameraAngleY = Math.PI / 2.5;
+                    cameraDistance = 350;
+                    break;
+                case 'perspective':
+                    cameraAngleX = Math.PI / 4;
+                    cameraAngleY = Math.PI / 3;
+                    cameraDistance = 400;
+                    break;
+            }
+            updateCamera();
+        }
+
+        function toggleRotation() {
+            isRotating = !isRotating;
+            event.target.textContent = isRotating ? '暂停旋转' : '继续旋转';
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRotating) {
+                galaxy.rotation.y += rotationSpeed;
+                core.rotation.y += rotationSpeed;
+                glow.rotation.y += rotationSpeed;
+            }
+
+            // 核心脉动效果
+            const pulse = 1 + Math.sin(Date.now() * 0.001) * 0.05;
+            core.scale.set(pulse, pulse, pulse);
+            glow.scale.set(pulse * 0.8, pulse * 0.8, pulse * 0.8);
+
+            // 背景星星微闪烁
+            bgStars.rotation.y += 0.0001;
+
+            renderer.render(scene, camera);
+        }
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 显示恒星数量
+        document.getElementById('star-count').textContent = GALAXY_PARAMS.starCount.toLocaleString();
+
+        updateCamera();
+        animate();
+    </script>
+</body>
+</html>

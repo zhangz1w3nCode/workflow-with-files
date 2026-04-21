@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p .claude/workflows/标准流水线/instance/20260422-015021/artifacts/搜索代码库)",
+      "Bash(cp galaxy-visualization.html .claude/workflows/标准流水线/instance/20260422-015021/artifacts/搜索代码库/)"
+    ]
+  }
+}
